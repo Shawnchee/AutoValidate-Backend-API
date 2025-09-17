@@ -4,3 +4,6 @@ env/
 __pycache__/
 
 docs/
+
+# Environment variables
+.env

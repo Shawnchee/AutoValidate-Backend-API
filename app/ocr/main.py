@@ -583,50 +583,24 @@ class VOCExtractor:
             print(f"Error saving JSON: {str(e)}")
     
     def update_main_results(self, new_data):
-        """Update the main_results.json file with only car information (no timestamps or raw text)"""
+        """Overwrite main_results.json with only the latest car information"""
         try:
             main_results_path = Path(__file__).parent / "main_results.json"
-            
-            # Extract only the car information fields we want to save
+
+            # Extract only relevant car info
             filtered_data = {
                 "car_brand": new_data.get("car_brand", ""),
                 "car_model": new_data.get("car_model", ""),
                 "manufactured_year": new_data.get("manufactured_year", "")
             }
-            
-            # Read existing data if file exists
-            existing_data = []
-            if main_results_path.exists():
-                try:
-                    with open(main_results_path, 'r', encoding='utf-8') as f:
-                        content = f.read().strip()
-                        if content:
-                            existing_data = json.loads(content)
-                            # Handle both single dict and list of dicts
-                            if isinstance(existing_data, dict):
-                                existing_data = [existing_data]
-                except json.JSONDecodeError:
-                    print("Warning: Existing main_results.json is corrupted, starting fresh")
-                    existing_data = []
-            
-            # Add new data to the list
-            existing_data.append(filtered_data)
-            
-            # Keep only the last 100 results to prevent file from growing too large
-            if len(existing_data) > 100:
-                existing_data = existing_data[-100:]
-            
-            # Save updated data back to file
+
+            # Always overwrite with the latest record (single object, not array)
+            # This ensures only the most recent OCR result is kept
             with open(main_results_path, 'w', encoding='utf-8') as f:
-                if len(existing_data) == 1:
-                    # If only one result, save as single object for backward compatibility
-                    json.dump(existing_data[0], f, indent=2, ensure_ascii=False)
-                else:
-                    # If multiple results, save as array
-                    json.dump(existing_data, f, indent=2, ensure_ascii=False)
-                    
-            print(f"Car information updated in main_results.json (total records: {len(existing_data)})")
-            
+                json.dump(filtered_data, f, indent=2, ensure_ascii=False)
+
+            print("main_results.json updated with the latest record only (previous records removed)")
+
         except Exception as e:
             print(f"Error updating main_results.json: {str(e)}")
     

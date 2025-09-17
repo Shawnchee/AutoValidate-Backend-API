@@ -1,7 +1,5 @@
-[
-  {
-    "car_brand": "PROTON",
-    "car_model": "SAGA",
-    "manufactured_year": "2024"
-  }
-]
+{
+  "car_brand": "PROTON",
+  "car_model": "SAGA",
+  "manufactured_year": "2024"
+}
