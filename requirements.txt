@@ -5,4 +5,6 @@ pandas
 numpy
 sentence-transformers
 dotenv
-fuzzywuzzy
+rapidfuzz
+matplotlib
+seaborn
