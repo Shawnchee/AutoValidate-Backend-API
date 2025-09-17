@@ -96,7 +96,10 @@ def main():
                                     "manufactured_year": result.get("manufactured_year"),
                                     "voc_valid": True
                                 }
-                                supabase.table("voc_session").insert(data).execute()
+              
+                                supabase.table("voc_session").upsert(
+                                    data, on_conflict=["session_id"]
+                                ).execute()
                                 
                                 # Result to save
                                 result_to_save = {
