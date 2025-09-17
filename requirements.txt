@@ -1,3 +1,8 @@
 fastapi[standard]
 uvicorn
-
+qdrant-client
+pandas
+numpy
+sentence-transformers
+dotenv
+fuzzywuzzy
