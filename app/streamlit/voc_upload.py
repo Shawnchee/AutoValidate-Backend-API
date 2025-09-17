@@ -1,3 +1,5 @@
+#streamlit run app/streamlit/voc_upload.py
+
 import streamlit as st
 import os
 from PIL import Image
@@ -12,13 +14,13 @@ from ocr.main import MalaysianVOCExtractor
 
 def main():
     st.set_page_config(
-        page_title="Malaysian VOC OCR",
+        page_title="VOC Upload",
         page_icon="🚗",
         layout="centered"
     )
     
     # Header
-    st.title("🚗 Malaysian VOC OCR")
+    st.title("🚗 VOC Upload")
     st.markdown("Upload your Vehicle Ownership Certificate to extract car information")
     
     # File uploader
@@ -35,7 +37,7 @@ def main():
         with col1:
             st.subheader("Uploaded Image")
             image = Image.open(uploaded_file)
-            st.image(image, caption="VOC Document", use_column_width=True)
+            st.image(image, caption="VOC Document", use_container_width=True)
         
         with col2:
             st.subheader("Extraction Results")
@@ -89,20 +91,9 @@ def main():
                         if os.path.exists(temp_path):
                             os.remove(temp_path)
     
-    # Instructions
-    with st.expander("📋 Instructions"):
-        st.markdown("""
-        1. **Upload Image**: Click 'Browse files' to select your VOC image
-        2. **Image Quality**: Ensure the image is clear and well-lit
-        3. **Extract**: Click 'Extract Information' to process the document
-        4. **Download**: Save the results as a JSON file
+    
         
-        **Supported Information:**
-        - Car Brand (from "Buatan/Nama Model" field)
-        - Car Model (from "Buatan/Nama Model" field) 
-        - Manufactured Year (from "Jenis Badan/Tahun Dibuat" field)
-        """)
+        
 
 if __name__ == "__main__":
     main()
-# Note: To run this app, use the command: streamlit run app/streamlit/voc_upload.py

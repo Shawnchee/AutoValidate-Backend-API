@@ -8,7 +8,7 @@ from datetime import datetime
 import numpy as np
 import os
 
-class MalaysianVOCExtractor:
+class VOCExtractor:
     def __init__(self):
         # Configure Tesseract path if needed (uncomment and adjust for Windows)
         tesseract_paths = [
@@ -198,10 +198,10 @@ class MalaysianVOCExtractor:
         # Base score from text length
         score += len(text.strip()) * 0.1
         
-        # Bonus for containing expected Malaysian VOC keywords
-        malay_keywords = ['SIJIL', 'PEMILIKAN', 'KENDERAAN', 'BUATAN', 'NAMA MODEL', 
+        # Bonus for containing expected VOC keywords
+        voc_keywords = ['SIJIL', 'PEMILIKAN', 'KENDERAAN', 'BUATAN', 'NAMA MODEL', 
                          'JENIS BADAN', 'TAHUN DIBUAT', 'MOTORKAR', 'PENDAFTARAN']
-        for keyword in malay_keywords:
+        for keyword in voc_keywords:
             if keyword in text.upper():
                 score += 15
         
@@ -400,7 +400,7 @@ class MalaysianVOCExtractor:
         if not text:
             return ""
         
-        # Common OCR corrections for Malaysian VOC documents
+        # Common OCR corrections for VOC 
         corrections = {
             # Common misreads
             r'\b0\b': 'O',  # Zero to O
@@ -705,7 +705,7 @@ class MalaysianVOCExtractor:
         return car_info
 
 def main():
-    parser = argparse.ArgumentParser(description='Extract car information from Malaysian VOC documents')
+    parser = argparse.ArgumentParser(description='Extract car information from VOC')
     parser.add_argument('image_path', help='Path to the VOC image file')
     parser.add_argument('-o', '--output', help='Output JSON file path', default=None)
     
@@ -718,7 +718,7 @@ def main():
         return
     
     # Create extractor and process the image
-    extractor = MalaysianVOCExtractor()
+    extractor = VOCExtractor()
     result = extractor.process_voc(image_path, args.output)
     
     if result:
