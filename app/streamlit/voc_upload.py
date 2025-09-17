@@ -10,7 +10,7 @@ from datetime import datetime
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'app'))
-from ocr.main import MalaysianVOCExtractor
+from ocr.main import VOCExtractor
 
 def main():
     st.set_page_config(
@@ -27,7 +27,7 @@ def main():
     uploaded_file = st.file_uploader(
         "Choose a VOC image file",
         type=['png', 'jpg', 'jpeg'],
-        help="Upload a clear image of your Malaysian Vehicle Ownership Certificate"
+        help="Upload a clear image of your Vehicle Ownership Certificate"
     )
     
     if uploaded_file is not None:
@@ -52,7 +52,7 @@ def main():
                             f.write(uploaded_file.getbuffer())
                         
                         # Extract information using our OCR
-                        extractor = MalaysianVOCExtractor()
+                        extractor = VOCExtractor()
                         result = extractor.extract_from_image(temp_path)
                         
                         # Display results
@@ -77,7 +77,7 @@ def main():
                                     mime="application/json"
                                 )
                             else:
-                                st.error("Could not extract car information. Please ensure the image is clear and contains a valid Malaysian VOC.")
+                                st.error("Could not extract car information. Please ensure the image is clear and contains a valid VOC.")
                         else:
                             error_msg = result.get('error', 'Unknown error occurred') if result else 'Processing failed'
                             st.error(f"Error processing image: {error_msg}")
