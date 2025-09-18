@@ -1,5 +1,6 @@
 fastapi[standard]
 uvicorn
+
 opencv-python==4.8.1.78
 pytesseract==0.3.10
 Pillow==10.0.1
@@ -8,4 +9,10 @@ streamlit>=1.28.0
 python-dotenv>=1.0.0
 supabase>=2.0.0
 streamlit-cookies-manager>=0.2.0
+qdrant-client
+pandas
+numpy
+sentence-transformers
+dotenv
+fuzzywuzzy
 
