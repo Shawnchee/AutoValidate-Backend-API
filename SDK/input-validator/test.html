@@ -7,34 +7,49 @@
     import InputValidator from './input_validate.js';
 
     window.addEventListener('DOMContentLoaded', () => {
-      const icField = document.getElementById('ic');
-      const plateField = document.getElementById('plate');
-      const postcodeField = document.getElementById('postcode');
+        const icField = document.getElementById('ic');
+        const plateField = document.getElementById('plate');
+        const postcodeField = document.getElementById('postcode');
+        const emailField = document.getElementById('email');
 
-      InputValidator.validateIC(icField);
-      InputValidator.validateCarPlate(plateField);
-      InputValidator.validatePostcode(postcodeField);
+        InputValidator.registerValidator('email', {
+            pattern: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            validationError: "Email must be in the format of user@example.com",
+        });
+
+        InputValidator.applyCustomValidator(emailField, 'email');
+
+        InputValidator.validateIC(icField);
+        InputValidator.validateCarPlate(plateField);
+        InputValidator.validatePostcode(postcodeField);
+        InputValidator.validateYear(yearField);
     });
   </script>
 </head>
 <body>
-  <h2>Form Input Validation Test</h2>
-  <form>
+    <h2>Form Input Validation Test</h2>
+    <form>
     <label>
-      IC Number:
-      <input type="text" id="ic" placeholder="XXXXXX-XX-XXXX" required />
+        IC Number:
+        <input type="text" id="ic" placeholder="XXXXXX-XX-XXXX" required />
     </label>
     <br><br>
 
     <label>
-      Car Plate:
-      <input type="text" id="plate" placeholder="ABC1234" required />
+        Email:
+        <input type="text" id="email" placeholder="ali@gmail.com" required />
     </label>
     <br><br>
 
     <label>
-      Postcode:
-      <input type="text" id="postcode" placeholder="52000" required />
+        Car Plate:
+        <input type="text" id="plate" placeholder="ABC1234" required />
+    </label>
+    <br><br>
+
+    <label>
+        Postcode:
+        <input type="text" id="postcode" placeholder="52000" required />
     </label>
     <br><br>
 

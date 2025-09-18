@@ -1,5 +1,7 @@
 /**
  InputValidator Class
+ 
+ Built-in Validators:
  IC Number (NRIC)
   * - Digits only, max 12
   * - Auto-format to XXXXXX-XX-XXXX
@@ -10,13 +12,35 @@
  Postcode
   * - Digits only, max 5
   * - Must be exactly 5 digits
+
+ Custom Validator Registration:
+ InputValidator.registerValidator('validatorName', {
+   allowedChars: /regex/,           // Allowed characters
+   maxLength: number,               // Maximum length
+   transform: (value) => value,     // Transform input (eg, toUpperCase)
+   pattern: /regex/,                // Final validation pattern
+   keypressError: "Error message",  // Error when invalid char entered
+   validationError: "Error message", // Error when input invalid
+   errorTimeout: 2000               // How long error message shows (ms)
+ });
+
+ Custom Validator Application:
+ InputValidator.applyCustomValidator(inputElement, 'validatorName');
  */
 
 class InputValidator {
+    // Store custom validators
     // ---- IC Number ----
     static validateIC(input) {
         input.addEventListener("keypress", (e) => {
-        if (!/[0-9]/.test(e.key)) e.preventDefault(); 
+        if (!/[0-9]/.test(e.key)) {
+            e.preventDefault();
+            input.setCustomValidity("Only numbers are allowed for this field");
+            input.reportValidity();
+            setTimeout(() => {
+                input.setCustomValidity("");
+            }, 2000);
+        }
         });
 
         input.addEventListener("input", () => {
@@ -34,25 +58,28 @@ class InputValidator {
         } else {
             input.setCustomValidity("IC must follow XXXXXX-XX-XXXX format");
         }
-        input.reportValidity(); // real-time popup
+        input.reportValidity(); 
         });
     }
 
     // ---- Car Plate ----
-    // ---- Car Plate ----
     static validateCarPlate(input) {
-        // Block typing of invalid chars in real-time
         input.addEventListener("keypress", (e) => {
             if (!/[A-Za-z0-9]/.test(e.key)) {
             e.preventDefault();
+            input.setCustomValidity("Only letters and numbers are allowed for this field");
+            input.reportValidity();
+            setTimeout(() => {
+                input.setCustomValidity("");
+            }, 2000);
             }
         });
 
         input.addEventListener("input", () => {
-            let value = input.value.toUpperCase();       // force uppercase
-            value = value.replace(/\s+/g, "");           // remove spaces
-            value = value.replace(/[^A-Z0-9]/g, "");     // remove symbols
-            if (value.length > 12) value = value.slice(0, 12); // increased limit for special plates
+            let value = input.value.toUpperCase();
+            value = value.replace(/\s+/g, "");
+            value = value.replace(/[^A-Z0-9]/g, "");
+            if (value.length > 12) value = value.slice(0, 12);
             input.value = value;
 
             const hasLetter = /[A-Z]/.test(value);
@@ -75,7 +102,14 @@ class InputValidator {
     // ---- Postcode ----
     static validatePostcode(input) {
         input.addEventListener("keypress", (e) => {
-            if (!/[0-9]/.test(e.key)) e.preventDefault(); 
+            if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+                input.setCustomValidity("Only numbers are allowed for this field");
+                input.reportValidity();
+                setTimeout(() => {
+                    input.setCustomValidity("");
+                }, 2000);
+            }
         });
 
         input.addEventListener("input", () => {
@@ -91,6 +125,67 @@ class InputValidator {
             input.reportValidity();
         });
     }
+    static customValidators = {};
+
+
+
+    // Custom validators 
+    // ---- Register Custom Validator ----
+    static registerValidator(name, config) {
+        this.customValidators[name] = config;
+    }
+
+    // ---- Apply Custom Validator ----
+    static applyCustomValidator(input, validatorName) {
+        const validator = this.customValidators[validatorName];
+        if (!validator) {
+            console.error(`Validator '${validatorName}' not found`);
+            return;
+        }
+
+        // Apply keypress validation
+        if (validator.allowedChars) {
+            input.addEventListener("keypress", (e) => {
+                if (!validator.allowedChars.test(e.key)) {
+                    e.preventDefault();
+                    input.setCustomValidity(validator.keypressError || "Invalid character");
+                    input.reportValidity();
+                    setTimeout(() => {
+                        input.setCustomValidity("");
+                    }, validator.errorTimeout || 2000);
+                }
+            });
+        }
+
+        // Apply input validation
+        input.addEventListener("input", () => {
+            let value = input.value;
+
+            // Apply transformations
+            if (validator.transform) {
+                value = validator.transform(value);
+            }
+
+            // Apply max length
+            if (validator.maxLength && value.length > validator.maxLength) {
+                value = value.slice(0, validator.maxLength);
+            }
+
+            input.value = value;
+
+            // Apply validation pattern
+            if (validator.pattern) {
+                if (validator.pattern.test(value)) {
+                    input.setCustomValidity("");
+                } else {
+                    input.setCustomValidity(validator.validationError || "Invalid format");
+                }
+            }
+
+            input.reportValidity();
+        });
+    }
+    
 
 }
 
