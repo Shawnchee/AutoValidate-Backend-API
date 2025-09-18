@@ -37,7 +37,7 @@ This API validates and corrects user inputs for car insurance forms:
 ### Features
 
 - Dynamic field validation for:  
-  - **Registration Year:** Blocks alphabet input, max 4 digits, range check  
+  - **Manufactured Year:** Blocks alphabet input, max 4 digits, range check  
   - **IC Number:** Validates Malaysian IC format (e.g., `YYMMDD-##-####`)  
   - **Car Plate Number:** Validates format rules (letters, digits, spacing)  
 - Instant, zero-latency feedback  
