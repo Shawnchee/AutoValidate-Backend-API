@@ -11,8 +11,8 @@ supabase>=2.0.0
 streamlit-cookies-manager>=0.2.0
 qdrant-client
 pandas
-numpy
 sentence-transformers
 dotenv
-fuzzywuzzy
-
+rapidfuzz
+matplotlib
+seaborn
