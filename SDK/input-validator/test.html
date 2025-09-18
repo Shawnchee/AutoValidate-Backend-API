@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Input Validator Test</title>
+  <script type="module">
+    import InputValidator from './input_validate.js';
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const icField = document.getElementById('ic');
+      const plateField = document.getElementById('plate');
+      const postcodeField = document.getElementById('postcode');
+
+      InputValidator.validateIC(icField);
+      InputValidator.validateCarPlate(plateField);
+      InputValidator.validatePostcode(postcodeField);
+    });
+  </script>
+</head>
+<body>
+  <h2>Form Input Validation Test</h2>
+  <form>
+    <label>
+      IC Number:
+      <input type="text" id="ic" placeholder="XXXXXX-XX-XXXX" required />
+    </label>
+    <br><br>
+
+    <label>
+      Car Plate:
+      <input type="text" id="plate" placeholder="ABC1234" required />
+    </label>
+    <br><br>
+
+    <label>
+      Postcode:
+      <input type="text" id="postcode" placeholder="52000" required />
+    </label>
+    <br><br>
+
+    <button type="submit">Submit</button>
+  </form>
+</body>
+</html>

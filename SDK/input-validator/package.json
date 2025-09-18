@@ -1,0 +1,9 @@
+{
+  "name": "input-validator",
+  "version": "1.0.0",
+  "main": "input_validate.js",
+  "description": "Frontend SDK for validating manufactured year, Malaysian IC, and car plate number",
+  "keywords": ["validator", "malaysia", "car", "ic", "year"],
+  "author": "SSS",
+  "license": "MIT"
+}
