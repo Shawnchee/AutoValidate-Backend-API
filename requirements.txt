@@ -16,3 +16,5 @@ dotenv
 rapidfuzz
 matplotlib
 seaborn
+datasets
+transformers[torch]
