@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 import asyncio
 import logging
 import threading
-import timer
+from timeit import default_timer as timer
 
 from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, VectorType
 from core.search import hybrid_search, load_choices
