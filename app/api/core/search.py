@@ -20,7 +20,6 @@ def normalize_text(s):
     s = re.sub(r'\s+', ' ', s)
     return s
 
-# ...existing code...
 def load_choices():
     """Load brand and model choices from Qdrant payloads (fallback to CSV)."""
     try:
@@ -96,7 +95,6 @@ def load_choices():
     except Exception as e:
         logger.exception("Error loading choices from Qdrant/CSV: %s", e)
         return [], [], 0, 0
-# ...existing code...
 
 def hybrid_search(query, choices, vector_type="brand", fuzzy_threshold=75, top_k=3, model=None):
     """
