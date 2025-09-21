@@ -15,8 +15,6 @@ class SearchRequest(BaseModel):
 
 class SearchResult(BaseModel):
     text: str
-    score: float
-    source: str
 
 class SearchResponse(BaseModel):
     results: List[SearchResult]
