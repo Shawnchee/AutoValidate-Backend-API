@@ -19,7 +19,7 @@ class SearchResult(BaseModel):
 class SearchResponse(BaseModel):
     results: List[SearchResult]
     query: str
-    vector_type: str
+    domain: str
 
 class IngestRequest(BaseModel):
     recreate_collection: bool = Field(default=False, description="Whether to recreate the collection")
