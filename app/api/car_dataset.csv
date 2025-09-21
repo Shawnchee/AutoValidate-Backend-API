@@ -1,0 +1,63 @@
+﻿id,car_brand,car_model,year_start,year_end
+1,Proton,S70,2023,2025
+2,Proton,Persona,1993,2025
+3,Proton,Perdana,2013,2025
+4,Proton,Saga,1985,2025
+5,Proton,X90,2023,2025
+6,Proton,X50,2020,2025
+7,Proton,X70,2018,2025
+8,Proton,Iriz,2014,2025
+9,Proton,eMas 7,2024,2025
+10,Proton,Exora,2009,2023
+11,Proton,Inspira,2010,2015
+12,Proton,Wira,1993,2009
+13,Perodua,Myvi,2005,2025
+14,Perodua,Alza,2009,2025
+15,Perodua,Axia,2014,2025
+16,Perodua,Bezza,2016,2025
+17,Perodua,Aruz,2019,2025
+18,Perodua,Ativa,2021,2025
+19,Perodua,Kancil,1994,2009
+20,Perodua,Kelisa,2001,2007
+21,Perodua,Viva,2007,2014
+22,Perodua,Kenari,2000,2009
+23,Honda,Civic,1972,2025
+24,Honda,Accord,1977,2025
+25,Honda,City,1981,2025
+26,Honda,CR-V,1995,2025
+27,Honda,BR-V,2016,2025
+28,Toyota,Hilux,1969,2025
+29,Toyota,Corolla,1996,2025
+30,Toyota,Corona,1990,2001
+31,Toyota,Avanza,2003,2025
+32,Toyota,Fortuner,2005,2025
+33,Toyota,Vios,2004,2025
+34,Toyota,Yaris,2019,2025
+35,Toyota,Innova,2005,2025
+36,Toyota,Camry,1994,2025
+37,Mazda,CX-5,2013,2025
+38,Mazda,CX-8,2019,2025
+39,Mazda,CX-30,2020,2025
+40,Chery,Omoda 5,2023,2025
+41,Chery,Tiggo 8 Pro,2023,2025
+42,Chery,Omoda E5,2024,2025
+43,Chery,Tiggo Cross,2025,2025
+44,Chery,Tiggo 7 Pro,2022,2025
+45,Chery,Maxime,2015,2018
+46,Chery,Omoda C9,2024,2025
+47,Mitsubishi,Xpander,2017,2025
+48,Mitsubishi,Triton,1978,2025
+49,Mitsubishi,ASX,2010,2025
+50,Mitsubishi,Outlander,2003,2025
+51,Mitsubishi,Mirage,2012,2025
+52,Mitsubishi,Attrage,2013,2024
+53,Ford,Ranger,2012,2025
+54,BMW,3 Series,1975,2025
+55,BMW,5 Series,1972,2025
+56,Mercedes-Benz,C-Class,1993,2025
+57,Mercedes-Benz,E-Class,1993,2025
+58,Volkswagen,Golf,1974,2025
+59,Volkswagen,Passat,1973,2025
+60,Nissan,Almera,1995,2025
+61,Nissan,X-Trail,2000,2025
+62,Nissan,Serena,1991,2025
