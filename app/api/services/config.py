@@ -58,4 +58,4 @@ else:
 # API configuration
 API_TITLE = "Vehicle Search API"
 API_DESCRIPTION = "API for searching vehicle brands and models with typo tolerance"
-API_VERSION = "1.1.0"
+API_VERSION = "1.1.1"
