@@ -3,13 +3,13 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
-class VectorType(str, Enum):
+class DomainType(str, Enum):
     BRAND = "brand"
     MODEL = "model"
 
 class SearchRequest(BaseModel):
     query: str = Field(..., description="The search query text")
-    vector_type: VectorType = Field(default=VectorType.BRAND, description="Whether to search for brands or models")
+    domain: DomainType = Field(default=DomainType.BRAND, description="Whether to search for brands or models")
     fuzzy_threshold: int = Field(default=75, ge=50, le=100, description="Threshold for fuzzy matching (50-100)")
     max_results: int = Field(default=3, ge=1, le=10, description="Maximum number of results to return")
 

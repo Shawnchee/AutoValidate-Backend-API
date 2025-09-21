@@ -5,7 +5,7 @@ import logging
 import threading
 from timeit import default_timer as timer
 
-from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, VectorType
+from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType
 from core.search import hybrid_search, load_choices
 from core.embedding import get_embedding_model
 from core.ingestion import ingest_data
@@ -92,17 +92,17 @@ def read_root():
 async def search(request: SearchRequest, model=Depends(get_model)):
     try:
         # Select choices based on vector_type
-        choices = app.state.brand_choices if request.vector_type == VectorType.BRAND else app.state.model_choices
+        choices = app.state.brand_choices if request.domain == DomainType.BRAND else app.state.model_choices
         
         if not choices:
-            raise HTTPException(status_code=500, detail=f"No {request.vector_type} choices available")
-        
+            raise HTTPException(status_code=500, detail=f"No {request.domain} choices available")
+
         # Perform search
         ts1 = timer()
         results = hybrid_search(
             query=request.query,
             choices=choices,
-            vector_type=request.vector_type,
+            domain=request.domain,
             fuzzy_threshold=request.fuzzy_threshold,
             top_k=request.max_results,
             model=model
@@ -132,7 +132,7 @@ async def detect_brand_typo(
     """
     request = SearchRequest(
         query=query,
-        vector_type=VectorType.BRAND,
+        domain=DomainType.BRAND,
     )
     
     return await search(request, model)
@@ -148,7 +148,7 @@ async def detect_model_typo(
     """
     request = SearchRequest(
         query=query,
-        vector_type=VectorType.MODEL,
+        domain=DomainType.MODEL,
     )
     
     
