@@ -9,6 +9,7 @@ from services.models import SearchRequest, SearchResponse, SearchResult, IngestR
 from core.search import hybrid_search, load_choices
 from core.embedding import get_embedding_model
 from core.ingestion import ingest_data
+from core.db_lookup import typo_lookup, save_typo_correction
 from services.config import API_TITLE, API_DESCRIPTION, API_VERSION
 
 # Set up logging
@@ -16,6 +17,13 @@ logger = logging.getLogger(__name__)
 
 # Lock to prevent concurrent lazy loads
 _load_lock = threading.Lock()
+
+async def save_correction_async(typo: str, corrected: str, domain: str):
+    """Async wrapper to save typo correction without blocking"""
+    try:
+        await asyncio.to_thread(save_typo_correction, typo, corrected, domain)
+    except Exception as e:
+        logger.error(f"Failed to save correction: {e}")
 
 def ensure_model_loaded():
     """
@@ -91,6 +99,19 @@ def read_root():
 @app.post("/search", response_model=SearchResponse)
 async def search(request: SearchRequest, model=Depends(get_model)):
     try:
+        domain = request.domain.value # Get string value of the enum DomainType
+
+        # 1. Try DB lookup for known typo first
+        found , corrected = typo_lookup(request.query, domain)
+        if found and corrected:
+            return SearchResponse(
+                results=[SearchResult(text=corrected)],
+                query=request.query,
+                domain=request.domain
+            )
+
+        # 2. If not found in DB, do hybrid search
+
         # Select choices based on vector_type
         choices = app.state.brand_choices if request.domain == DomainType.BRAND else app.state.model_choices
         
@@ -102,19 +123,26 @@ async def search(request: SearchRequest, model=Depends(get_model)):
         results = hybrid_search(
             query=request.query,
             choices=choices,
-            domain=request.domain,
+            vector_type=domain,
             fuzzy_threshold=request.fuzzy_threshold,
             top_k=request.max_results,
             model=model
         )
         ts2 = timer()
-        logger.info(f"Search for '{request.query}' ({request.vector_type}) returned {len(results)} results in {ts2 - ts1:.2f} seconds")
+        logger.info(f"Search for '{request.query}' ({domain}) returned {len(results)} results in {ts2 - ts1:.2f} seconds")
         
+        # 3. Save results to typo_lookup
+        if results and results[0]['text'] != request.query:
+            # Run in background to avoid blocking response
+            asyncio.create_task(
+                save_correction_async(request.query, results[0]['text'], domain)
+            )
+
         # Format response
         return SearchResponse(
             results=[SearchResult(**r) for r in results],
             query=request.query,
-            vector_type=request.vector_type
+            domain=request.domain
         )
     
     except Exception as e:
@@ -195,4 +223,6 @@ def ready_check():
         "brand_choices_loaded": hasattr(app.state, "brand_choices") and len(app.state.brand_choices) > 0,
         "model_choices_loaded": hasattr(app.state, "model_choices") and len(app.state.model_choices) > 0
     }
+
+
 

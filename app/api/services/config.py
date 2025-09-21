@@ -8,6 +8,9 @@ load_dotenv()
 
 BASE_API_DIR = Path(__file__).resolve().parent.parent
 
+# Supabase Config (or any other db)
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
 
 # Qdrant configuration
 QDRANT_API_KEY = os.getenv('QDRANT_API_KEY')
