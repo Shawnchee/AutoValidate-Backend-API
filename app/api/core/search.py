@@ -83,7 +83,7 @@ def load_choices():
             brand_list = sorted(brands)
             model_list = sorted(models)
             logger.info("Loaded %d brands and %d models from Qdrant", len(brand_list), len(model_list))
-            return brand_list, model_list, len(brand_list), len(model_list)
+            return brand_list, model_list
 
         # Fallback to CSV if Qdrant has no payloads
         logger.warning("No brands/models found in Qdrant payloads, falling back to CSV at DATA_PATH: %s", DATA_PATH)
@@ -91,7 +91,7 @@ def load_choices():
         brand_choices = list(df['car_brand'].dropna().unique())
         model_choices = list(df['car_model'].dropna().unique())
         logger.info("Loaded %d unique brands and %d unique models from CSV", len(brand_choices), len(model_choices))
-        return brand_choices, model_choices, len(brand_choices), len(model_choices)
+        return brand_choices, model_choices
 
     except Exception as e:
         logger.exception("Error loading choices from Qdrant/CSV: %s", e)
