@@ -98,6 +98,7 @@ async def search(request: SearchRequest, model=Depends(get_model)):
             raise HTTPException(status_code=500, detail=f"No {request.vector_type} choices available")
         
         # Perform search
+        ts1 = timer()
         results = hybrid_search(
             query=request.query,
             choices=choices,
@@ -106,6 +107,8 @@ async def search(request: SearchRequest, model=Depends(get_model)):
             top_k=request.max_results,
             model=model
         )
+        ts2 = timer()
+        logger.info(f"Search for '{request.query}' ({request.vector_type}) returned {len(results)} results in {ts2 - ts1:.2f} seconds")
         
         # Format response
         return SearchResponse(
@@ -127,13 +130,10 @@ async def detect_brand_typo(
     """
     Detect and correct brand typos
     """
-    ts1 = timer()
     request = SearchRequest(
         query=query,
         vector_type=VectorType.BRAND,
     )
-    ts2 = timer()
-    logger.info(f"Detect brand endpoint processing time: {ts2 - ts1:.2f} seconds")
     
     return await search(request, model)
 
@@ -146,15 +146,14 @@ async def detect_model_typo(
     """
     Detect and correct model typos
     """
-    ts1 = timer()
     request = SearchRequest(
         query=query,
         vector_type=VectorType.MODEL,
     )
-    ts2 = timer()
-    logger.info(f"Detect model endpoint processing time: {ts2 - ts1:.2f} seconds")
+    
     
     return await search(request, model)
+
 
 # Data ingestion endpoint
 @app.post("/ingest", response_model=IngestResponse)
