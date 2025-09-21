@@ -179,6 +179,3 @@ def hybrid_search(query, choices, vector_type="brand", fuzzy_threshold=75, top_k
     
     # Return top_k results, sorted by score
     return sorted(results, key=lambda x: x["score"], reverse=True)[:top_k]
-
-if __name__ == "__main__":
-    load_choices()
