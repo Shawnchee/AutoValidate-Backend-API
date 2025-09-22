@@ -6,7 +6,7 @@ import os
 from rapidfuzz import process as rapidfuzz_process
 from rapidfuzz import fuzz
 from services.config import COLLECTION_NAME, DATA_PATH
-from services.database import get_qdrant_client
+from app.api.services.qdrant import get_qdrant_client
 from core.embedding import get_embedding_model
 
 logger = logging.getLogger(__name__)
