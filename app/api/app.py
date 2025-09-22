@@ -102,7 +102,7 @@ async def search(request: SearchRequest, model=Depends(get_model)):
         domain = request.domain.value # Get string value of the enum DomainType
 
         # 1. Try DB lookup for known typo first
-        found , corrected = typo_lookup(request.query, domain)
+        found , corrected = await typo_lookup(request.query, domain)
         if found and corrected:
             return SearchResponse(
                 results=[SearchResult(text=corrected)],
@@ -134,9 +134,8 @@ async def search(request: SearchRequest, model=Depends(get_model)):
         # 3. Save results to typo_lookup
         if results and results[0]['text'] != request.query:
             # Run in background to avoid blocking response
-            asyncio.create_task(
-                save_correction_async(request.query, results[0]['text'], domain)
-            )
+            asyncio.create_task(save_typo_correction(request.query, results[0]['text'], domain))
+
 
         # Format response
         return SearchResponse(
