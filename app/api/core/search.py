@@ -6,7 +6,7 @@ import os
 from rapidfuzz import process as rapidfuzz_process
 from rapidfuzz import fuzz
 from services.config import COLLECTION_NAME, DATA_PATH
-from app.api.services.qdrant import get_qdrant_client
+from services.qdrant import get_qdrant_client
 from core.embedding import get_embedding_model
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ def load_choices():
 
     except Exception as e:
         logger.exception("Error loading choices from Qdrant/CSV: %s", e)
-        return [], [], 0, 0
+        return [], []
 
 def hybrid_search(query, choices, vector_type="brand", fuzzy_threshold=75, top_k=3, model=None):
     """
