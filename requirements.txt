@@ -18,3 +18,4 @@ matplotlib
 seaborn
 datasets
 transformers[torch]
+redis
