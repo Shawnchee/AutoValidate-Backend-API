@@ -130,12 +130,6 @@ async def search(request: SearchRequest, model=Depends(get_model)):
         )
         ts2 = timer()
         logger.info(f"Search for '{request.query}' ({domain}) returned {len(results)} results in {ts2 - ts1:.2f} seconds")
-        
-        # 3. Save results to typo_lookup
-        if results and results[0]['text'] != request.query:
-            # Run in background to avoid blocking response
-            asyncio.create_task(save_typo_correction(request.query, results[0]['text'], domain))
-
 
         # Format response
         return SearchResponse(
@@ -147,6 +141,38 @@ async def search(request: SearchRequest, model=Depends(get_model)):
     except Exception as e:
         logger.error(f"Search error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/save-correction", response_model=dict)
+async def save_correction(
+    typo: str,
+    corrected: str,
+    domain: str
+):
+    """
+    Save an explicitly accepted typo correction
+    Called when the user selects a correction from the UI
+    """
+    try:
+        if domain not in [d.value for d in DomainType]:
+            raise HTTPException(status_code=400, detail="Invalid domain")
+        
+        success = await save_typo_correction(typo, corrected, domain)
+
+        if success:
+            return {
+                "status": "success",
+                "message": f"Saved correction '{typo}' -> '{corrected}' in domain '{domain}'",
+                "typo": typo,
+                "corrected": corrected,
+                "domain": domain
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Failed to save correction")
+        
+    except Exception as e:
+        logger.error(f"Save correction error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # New detect endpoints for brand and model typo detection
 @app.get("/detect/brand/{query}", response_model=SearchResponse)
