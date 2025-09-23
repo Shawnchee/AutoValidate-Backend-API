@@ -10,7 +10,7 @@ import os
 
 class VOCExtractor:
     def __init__(self):
-        # Configure Tesseract path if needed (uncomment and adjust for Windows)
+        # Configure Tesseract path for Windows
         tesseract_paths = [
             r'C:\Program Files\Tesseract-OCR\tesseract.exe',
             r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
@@ -26,38 +26,24 @@ class VOCExtractor:
                 break
         
         if not tesseract_found:
-            # Set default path and let it fail with helpful error later
             pytesseract.pytesseract.tesseract_cmd = tesseract_paths[0]
         
         self.brand_model_patterns = [
-            # Enhanced patterns for "Buatan / Nama Model : BRAND / MODEL"
             r'(?:Buatan\s*/\s*Nama\s+Model|Buatan|Nama\s+Model)\s*[:]\s*([A-Z][A-Z\s]+?)\s*/\s*([A-Z0-9\.\s\-]+?)(?:\s*\n|$)',
-            # More flexible patterns for different formatting
             r'(?:Buatan|Nama\s+Model)\s*[:/]\s*([A-Z][A-Z\s]{2,20})\s*/\s*([A-Z0-9\.\s\-]{2,40})',
-            # Pattern for text after field labels
             r'(?:BUATAN|NAMA\s*MODEL)\s*[:/]\s*([A-Z][A-Z\s]{2,20})\s*/\s*([A-Z0-9\.\s\-]{2,40})',
-            # Generic brand/model pattern with slash separator
             r'\b([A-Z]{3,}(?:\s+[A-Z]{2,})*)\s*/\s*([A-Z0-9\.\s\-]{3,40})',
-            # Pattern for potential OCR errors in field names
             r'(?:BU[A-Z]TAN|N[A-Z]MA\s*M[O0]DEL)\s*[:/]\s*([A-Z][A-Z\s]{2,20})\s*/\s*([A-Z0-9\.\s\-]{2,40})',
-            # Capture any meaningful text between colons and slashes
             r':\s*([A-Z][A-Z\s]{3,20})\s*/\s*([A-Z0-9\.\s\-]{3,40})',
-            # Last resort: any uppercase words with slash separator
             r'\b([A-Z]{4,}(?:\s+[A-Z]{3,})?)\s*/\s*([A-Z0-9][A-Z0-9\.\s\-]{2,30})'
         ]
         
         self.year_patterns = [
-            # Enhanced patterns for "Jenis Badan / Tahun Dibuat : TYPE / YEAR"
             r'(?:Jenis\s+Badan\s*/\s*Tahun\s+Dibuat|Jenis\s+Badan|Tahun\s+Dibuat)\s*[:]\s*[^/\n]*\s*/\s*(\d{4})',
-            # Pattern for MOTORKAR / YEAR format (more flexible)
             r'(?:MOTORKAR|KERETA|LORI|VAN|M[O0]T[O0]RKAR)\s*/\s*(\d{4})',
-            # Enhanced year pattern after slash
             r'/\s*(\d{4})(?:\s|$|\n)',
-            # Year in context of vehicle type
             r'(?:MOTORKAR|KERETA)\s*[/-]\s*(\d{4})',
-            # Standalone 4-digit year with validation
             r'\b(19[8-9]\d|20[0-3]\d)\b',
-            # Year with potential OCR errors
             r'\b(2[O0][0-3][0-9])\b'
         ]
         
@@ -146,13 +132,13 @@ class VOCExtractor:
             preprocessed_images = self.preprocess_image(image_path)
             
             configs = [
-                r'--oem 3 --psm 6 -l msa+eng',  # Malay + English
+                r'--oem 3 --psm 6 -l msa+eng',
                 r'--oem 3 --psm 4 -l msa+eng',
-                r'--oem 3 --psm 6 -l eng',      # Fallback to English only
+                r'--oem 3 --psm 6 -l eng',
                 r'--oem 3 --psm 3 -l msa+eng',
                 r'--oem 1 --psm 6 -l eng',
-                r'--oem 3 --psm 8 -l eng',      # Single word
-                r'--oem 3 --psm 13 -l eng'      # Raw line
+                r'--oem 3 --psm 8 -l eng',
+                r'--oem 3 --psm 13 -l eng'
             ]
             
             all_results = []
@@ -206,15 +192,15 @@ class VOCExtractor:
                 score += 15
         
         # Bonus for containing structural elements
-        score += text.count(':') * 8  # Colons indicate field labels
-        score += text.count('/') * 5  # Slashes often separate values
-        score += len(re.findall(r'\b\d{4}\b', text)) * 10  # 4-digit numbers (years, etc.)
+        score += text.count(':') * 8
+        score += text.count('/') * 5
+        score += len(re.findall(r'\b\d{4}\b', text)) * 10
         
-        # Penalty for too many special characters (indicates OCR errors)
+        # Penalty for too many special characters
         special_chars = len(re.findall(r'[^\w\s:/.-]', text))
         score -= special_chars * 2
         
-        # Penalty for too many short fragments (broken words)
+        # Penalty for too many short fragments
         words = text.split()
         short_words = [w for w in words if len(w) <= 2 and w.isalpha()]
         score -= len(short_words) * 1
@@ -222,7 +208,7 @@ class VOCExtractor:
         return max(0, score)
     
     def extract_car_info(self, text):
-        """Extract car information using enhanced regex patterns and fuzzy matching"""
+        """Extract car information using enhanced regex patterns"""
         result = {
             "car_brand": "",
             "car_model": "",
@@ -232,33 +218,11 @@ class VOCExtractor:
         }
         
         try:
-            print("Debug - Starting car info extraction...")
-            print("Debug - Raw text preview (first 500 chars):")
-            print(repr(text[:500]))
-            
-            # First, try traditional regex approach
+            # Extract using traditional regex approach
             traditional_result = self.extract_traditional_patterns(text)
-            
-            # If traditional approach fails, try fuzzy matching
-            if not traditional_result["car_brand"] or not traditional_result["car_model"]:
-                print("Debug - Traditional patterns failed, trying fuzzy matching...")
-                fuzzy_result = self.extract_using_fuzzy_matching(text)
-                
-                # Merge results (prefer fuzzy if traditional is empty)
-                if fuzzy_result["car_brand"]:
-                    traditional_result["car_brand"] = fuzzy_result["car_brand"]
-                if fuzzy_result["car_model"]:
-                    traditional_result["car_model"] = fuzzy_result["car_model"]
-                if fuzzy_result["manufactured_year"]:
-                    traditional_result["manufactured_year"] = fuzzy_result["manufactured_year"]
             
             # Copy results
             result.update(traditional_result)
-            
-            print(f"Debug - Final extracted info:")
-            print(f"  Brand: '{result['car_brand']}'")
-            print(f"  Model: '{result['car_model']}'")
-            print(f"  Year: '{result['manufactured_year']}'")
             
         except Exception as e:
             print(f"Error extracting car info: {str(e)}")
@@ -273,11 +237,6 @@ class VOCExtractor:
         normalized_text = self.normalize_ocr_text(text)
         original_lines = normalized_text.split('\n')
         
-        print("Debug - Looking for brand/model patterns in normalized text...")
-        print("Debug - Normalized text lines (first 10):")
-        for i, line in enumerate(original_lines[:10]):
-            print(f"Line {i}: {repr(line)}")
-        
         brand_model_found = False
         
         # Look for specific field lines
@@ -285,12 +244,9 @@ class VOCExtractor:
             line_clean = line.strip()
             # Look for the specific "Buatan / Nama Model" pattern
             if any(keyword in line_clean.upper() for keyword in ['BUATAN', 'NAMA MODEL']):
-                print(f"Debug - Found brand/model line: {line_clean}")
-                
                 # Extract everything after the colon
                 if ':' in line_clean:
                     after_colon = line_clean.split(':', 1)[1].strip()
-                    print(f"Debug - After colon: {after_colon}")
                     
                     # Split by slash to get brand and model
                     if '/' in after_colon:
@@ -298,50 +254,50 @@ class VOCExtractor:
                         if len(parts) >= 2:
                             brand = self.clean_text(parts[0])
                             model = self.clean_text(parts[1])
-                            print(f"Debug - Raw extracted brand: '{brand}', model: '{model}'")
                             
                             # Validate brand
-                            validated_brand = self.find_best_brand_match(brand)
-                            if validated_brand:
-                                result["car_brand"] = validated_brand
+                            brand_valid = self.validate_brand(brand)
+                            if brand_valid:
+                                result["car_brand"] = brand
                                 result["car_model"] = self.clean_model_name(model)
                                 brand_model_found = True
-                                print(f"Debug - Validated brand: '{validated_brand}'")
                                 break
         
         if not brand_model_found:
-            print("Debug - Trying regex patterns...")
             for i, pattern in enumerate(self.brand_model_patterns):
-                print(f"Debug - Trying pattern {i+1}: {pattern}")
                 match = re.search(pattern, normalized_text, re.IGNORECASE | re.MULTILINE)
                 if match and len(match.groups()) >= 2:
                     brand = self.clean_text(match.group(1))
                     model = self.clean_text(match.group(2))
-                    print(f"Debug - Regex {i+1} extracted brand: '{brand}', model: '{model}'")
                     
-                    validated_brand = self.find_best_brand_match(brand)
-                    if validated_brand and len(model) > 1:
-                        result["car_brand"] = validated_brand
+                    # Skip obviously wrong matches (from addresses, etc.)
+                    brand_words = brand.upper().split()
+                    has_address_words = any(addr_word in brand_words for addr_word in ['JALAN', 'LOT', 'KUALA', 'LUMPUR', 'SELANGOR', 'WISMA'])
+                    
+                    if has_address_words:
+                        continue
+                    
+                    brand_valid = self.validate_brand(brand)
+                    model_valid = len(model) > 1
+                        
+                    if brand_valid and model_valid:
+                        result["car_brand"] = brand
                         result["car_model"] = self.clean_model_name(model)
                         brand_model_found = True
                         break
         
         # Look for year
-        print("Debug - Looking for year patterns...")
         year_found = False
         
         for line in original_lines:
             line_clean = line.strip()
             if any(keyword in line_clean.upper() for keyword in ['JENIS BADAN', 'TAHUN DIBUAT', 'MOTORKAR']):
-                print(f"Debug - Found year line: {line_clean}")
-                
                 if '/' in line_clean:
                     parts = line_clean.split('/')
                     for part in reversed(parts):
                         year_matches = re.findall(r'\b(19\d{2}|20[0-3]\d)\b', part)
                         if year_matches:
                             year = year_matches[0]
-                            print(f"Debug - Extracted year from part '{part}': '{year}'")
                             if self.validate_year(year):
                                 result["manufactured_year"] = year
                                 year_found = True
@@ -351,12 +307,10 @@ class VOCExtractor:
                     break
         
         if not year_found:
-            print("Debug - Trying year regex patterns...")
             for i, pattern in enumerate(self.year_patterns):
                 match = re.search(pattern, normalized_text, re.IGNORECASE | re.MULTILINE)
                 if match:
                     year = match.group(1).strip()
-                    print(f"Debug - Year regex {i+1} extracted: '{year}'")
                     if self.validate_year(year):
                         result["manufactured_year"] = year
                         year_found = True
@@ -369,11 +323,22 @@ class VOCExtractor:
         if not brand or len(brand) < 3:
             return False
         
-        brand_upper = brand.upper()
-        # Check exact match or partial match for compound brands
+        brand_upper = brand.upper().strip()
+        
+        # Check exact match first
         for known_brand in self.common_brands:
-            if brand_upper == known_brand or brand_upper in known_brand or known_brand in brand_upper:
+            if brand_upper == known_brand:
                 return True
+        
+        # Check substring matches
+        for known_brand in self.common_brands:
+            if brand_upper in known_brand or known_brand in brand_upper:
+                return True
+        
+        # More lenient validation - accept any reasonable text
+        if len(brand_upper) >= 3 and brand_upper.replace(' ', '').isalpha():
+            return True
+            
         return False
     
     def validate_year(self, year):
@@ -400,16 +365,12 @@ class VOCExtractor:
         if not text:
             return ""
         
-        # Common OCR corrections for VOC 
         corrections = {
-            # Common misreads
-            r'\b0\b': 'O',  # Zero to O
-            r'\bI\b': '1',  # I to 1 in numbers
-            r'\bl\b': '1',  # lowercase l to 1
-            r'\bS\b': '5',  # S to 5 in numbers
-            r'\bB\b': '8',  # B to 8 in numbers
-            
-            # Field name corrections
+            r'\b0\b': 'O',
+            r'\bI\b': '1',
+            r'\bl\b': '1',
+            r'\bS\b': '5',
+            r'\bB\b': '8',
             r'BUAIAN': 'BUATAN',
             r'BUATN': 'BUATAN', 
             r'NAMA\s*M0DEL': 'NAMA MODEL',
@@ -418,15 +379,11 @@ class VOCExtractor:
             r'MGIORKAR': 'MOTORKAR',
             r'TAHUN\s*DIBUAT': 'TAHUN DIBUAT',
             r'TAHUN\s*D1BUAT': 'TAHUN DIBUAT',
-            
-            # Remove common OCR artifacts
             r'[|]': 'I',
             r'[{}]': '',
             r'[@#$%^&*()]': '',
             r'_+': ' ',
             r'=+': ' ',
-            
-            # Fix slash separators
             r'\s*/\s*': ' / ',
             r'\/': ' / ',
         }
@@ -437,98 +394,15 @@ class VOCExtractor:
         
         return normalized
     
-    def extract_using_fuzzy_matching(self, text):
-        """Use fuzzy matching to find brand and model even with OCR errors"""
-        result = {"car_brand": "", "car_model": "", "manufactured_year": ""}
-        
-        # Normalize text
-        normalized_text = self.normalize_ocr_text(text)
-        lines = normalized_text.split('\n')
-        
-        # Look for lines that might contain brand/model info
-        potential_brand_lines = []
-        for line in lines:
-            line_upper = line.upper()
-            # Check if line contains field indicators
-            if any(indicator in line_upper for indicator in 
-                   ['BUATAN', 'NAMA', 'MODEL', 'BRAND', ':']):
-                potential_brand_lines.append(line)
-        
-        # Try to extract from potential lines
-        for line in potential_brand_lines:
-            if ':' in line:
-                after_colon = line.split(':', 1)[1].strip()
-                
-                # Look for brand / model pattern
-                if '/' in after_colon:
-                    parts = [p.strip() for p in after_colon.split('/', 1)]
-                    if len(parts) >= 2:
-                        potential_brand = parts[0]
-                        potential_model = parts[1]
-                        
-                        # Validate using fuzzy matching against known brands
-                        best_brand_match = self.find_best_brand_match(potential_brand)
-                        if best_brand_match:
-                            result["car_brand"] = best_brand_match
-                            result["car_model"] = self.clean_model_name(potential_model)
-                            break
-        
-        # Look for year separately
-        year_patterns = [
-            r'(?:MOTORKAR|KERETA|LORI|VAN)\s*/\s*(\d{4})',
-            r'(?:TAHUN\s+DIBUAT|YEAR)\s*[:/]\s*[^/]*\s*/\s*(\d{4})',
-            r'/\s*(\d{4})(?:\s|$)',
-            r'\b(19\d{2}|20[0-3]\d)\b'
-        ]
-        
-        for pattern in year_patterns:
-            match = re.search(pattern, normalized_text, re.IGNORECASE)
-            if match:
-                year = match.group(1)
-                if self.validate_year(year):
-                    result["manufactured_year"] = year
-                    break
-        
-        return result
-    
-    def find_best_brand_match(self, potential_brand):
-        """Find best matching brand from known brands list"""
-        if not potential_brand or len(potential_brand) < 3:
-            return ""
-        
-        potential_brand = potential_brand.upper().strip()
-        
-        # Exact match first
-        if potential_brand in self.common_brands:
-            return potential_brand
-        
-        # Check if any known brand is contained in the potential brand
-        for brand in self.common_brands:
-            if brand in potential_brand or potential_brand in brand:
-                return brand
-        
-        # Simple fuzzy matching - check for similar length and characters
-        for brand in self.common_brands:
-            if len(potential_brand) >= 3 and len(brand) >= 3:
-                # Check if most characters match (allowing for OCR errors)
-                matching_chars = sum(1 for c1, c2 in zip(potential_brand, brand) if c1 == c2)
-                similarity = matching_chars / max(len(potential_brand), len(brand))
-                if similarity >= 0.6:  # 60% similarity threshold
-                    return brand
-        
-        return ""
-    
     def clean_model_name(self, model):
         """Clean and normalize model name - extract only the first word"""
         if not model:
             return ""
         
-        # Remove extra characters and normalize
         cleaned = re.sub(r'[^\w\s\.\-]', '', model.strip())
         cleaned = re.sub(r'\s+', ' ', cleaned)
         
         if cleaned:
-            # Extract only the first word (model name)
             first_word = cleaned.split()[0] if cleaned.split() else ""
             return first_word.upper() if first_word else ""
         
@@ -587,15 +461,12 @@ class VOCExtractor:
         try:
             main_results_path = Path(__file__).parent / "main_results.json"
 
-            # Extract only relevant car info
             filtered_data = {
                 "car_brand": new_data.get("car_brand", ""),
                 "car_model": new_data.get("car_model", ""),
                 "manufactured_year": new_data.get("manufactured_year", "")
             }
 
-            # Always overwrite with the latest record (single object, not array)
-            # This ensures only the most recent OCR result is kept
             with open(main_results_path, 'w', encoding='utf-8') as f:
                 json.dump(filtered_data, f, indent=2, ensure_ascii=False)
 

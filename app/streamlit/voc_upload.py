@@ -40,6 +40,18 @@ def main():
         layout="centered"
     )
     
+    # Sidebar with session info
+    with st.sidebar:
+        st.header("📋 Session Info")
+        st.write("**Session ID:**")
+        st.code(session_id, language=None)
+        st.write("**Status:**")
+        st.success("Active")
+        
+        # Optional: Add timestamp
+        st.write("**Session Started:**")
+        st.write(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    
     # Header
     st.title("🚗 VOC Upload")
     st.markdown("Upload your Vehicle Ownership Certificate to extract car information")
@@ -72,7 +84,7 @@ def main():
                         with open(temp_path, "wb") as f:
                             f.write(uploaded_file.getbuffer())
                         
-                        # Extract information using our OCR
+                        # Extract information using OCR
                         extractor = VOCExtractor()
                         result = extractor.extract_from_image(temp_path)
                         
@@ -89,17 +101,23 @@ def main():
                                 })
                                 
                                 # --- Save to Supabase ---
-                                data = {
-                                    "session_id": session_id,
-                                    "car_brand": result.get("car_brand"),
-                                    "car_model": result.get("car_model"),
-                                    "manufactured_year": result.get("manufactured_year"),
-                                    "voc_valid": True
-                                }
-              
-                                supabase.table("voc_session").upsert(
-                                    data, on_conflict=["session_id"]
-                                ).execute()
+                                try:
+                                    data = {
+                                        "session_id": session_id,
+                                        "car_brand": result.get("car_brand"),
+                                        "car_model": result.get("car_model"),
+                                        "manufactured_year": result.get("manufactured_year"),
+                                        "voc_valid": True
+                                    }
+                  
+                                    supabase.table("voc_session").upsert(
+                                        data, on_conflict=["session_id"]
+                                    ).execute()
+                                    st.info("✅ Data saved to database successfully")
+                                    
+                                except Exception as db_error:
+                                    st.warning(f"⚠️ Database save failed: {str(db_error)}")
+                                    st.info("📝 Continuing with local file save...")
                                 
                                 # Result to save
                                 result_to_save = {
