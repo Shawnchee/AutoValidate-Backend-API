@@ -19,3 +19,10 @@ seaborn
 datasets
 transformers[torch]
 redis
+opencv-python
+pytesseract
+numpy
+streamlit
+python-dotenv
+supabase
+pillow
