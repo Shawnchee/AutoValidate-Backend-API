@@ -12,6 +12,14 @@ class SearchRequest(BaseModel):
     domain: DomainType = Field(default=DomainType.BRAND, description="Whether to search for brands or models")
     fuzzy_threshold: int = Field(default=75, ge=50, le=100, description="Threshold for fuzzy matching (50-100)")
     max_results: int = Field(default=3, ge=1, le=10, description="Maximum number of results to return")
+    session_id: Optional[str] = None 
+
+class VOCResult(BaseModel):
+    """VOC extraction results from OCR"""
+    car_brand: Optional[str] = None
+    car_model: Optional[str] = None
+    manufactured_year: Optional[str] = None
+    voc_valid: bool = False
 
 class SearchResult(BaseModel):
     text: str
@@ -20,6 +28,7 @@ class SearchResponse(BaseModel):
     results: List[SearchResult]
     query: str
     domain: str
+    voc_result: Optional[VOCResult] = None 
 
 class IngestRequest(BaseModel):
     recreate_collection: bool = Field(default=False, description="Whether to recreate the collection")

@@ -59,6 +59,6 @@ else:
     DATA_PATH = str((BASE_API_DIR / "car_dataset.csv").resolve())
     
 # API configuration
-API_TITLE = "Vehicle Search API"
-API_DESCRIPTION = "API for searching vehicle brands and models with typo tolerance"
-API_VERSION = "1.1.2"
+API_TITLE = "Enhanced Typo Detection API"
+API_DESCRIPTION = "API for detecting typos in vehicle brands and models with VOC Optional Upload and Weekly Model Training"
+API_VERSION = "1.2.0"

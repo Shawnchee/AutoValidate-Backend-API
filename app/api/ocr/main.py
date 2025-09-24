@@ -12,6 +12,7 @@ class VOCExtractor:
     def __init__(self):
         # Configure Tesseract path if needed (uncomment and adjust for Windows)
         tesseract_paths = [
+            r'S:\Projects\tesseract.exe',  # Example custom path
             r'C:\Program Files\Tesseract-OCR\tesseract.exe',
             r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
             r'C:\Users\{}\AppData\Local\Programs\Tesseract-OCR\tesseract.exe'.format(os.getenv('USERNAME', '')),
