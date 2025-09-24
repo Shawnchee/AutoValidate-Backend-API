@@ -21,6 +21,14 @@ class VOCResult(BaseModel):
     manufactured_year: Optional[str] = None
     voc_valid: bool = False
 
+class ManufacturedYearRequest(BaseModel):
+    car_brand: str
+    car_model: str
+
+class ManufacturedYearResult(BaseModel):
+    year_start: Optional[str] = None
+    year_end: Optional[str] = None
+
 class SearchResult(BaseModel):
     text: str
 
