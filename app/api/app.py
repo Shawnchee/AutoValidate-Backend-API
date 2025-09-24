@@ -11,12 +11,13 @@ from uuid import uuid4
 from timeit import default_timer as timer
 from supabase import create_client, Client
 
-from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType
+from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType, ManufacturedYearRequest, ManufacturedYearResult
 from core.search import hybrid_search, load_choices
 from core.embedding import get_embedding_model
 from core.ingestion import ingest_data
 from core.db_lookup import typo_lookup, save_typo_correction
 from services.config import API_TITLE, API_DESCRIPTION, API_VERSION,SUPABASE_URL, SUPABASE_ANON_KEY
+from services.qdrant import get_qdrant_client
 from ocr.main import VOCExtractor
 
 # Set up logging
@@ -178,6 +179,62 @@ async def upload_voc(
         logger.error(f"Error uploading VOC: {e}")
         raise HTTPException(status_code=500, detail=f"Error processing upload: {str(e)}")
 
+
+@app.post("/get-manufactured-year-range", response_model=ManufacturedYearResult)
+async def get_manufactured_year_range(request: ManufacturedYearRequest):
+    """
+    Get the manufactured year range for a given car brand and model.
+    """
+    client = get_qdrant_client()
+
+            # Create payload indexes for car_brand and car_model
+    client.create_payload_index(
+            collection_name="car_data_modelbrand",
+            field_name="car_brand",
+            field_schema="keyword"  
+    )
+        
+    client.create_payload_index(
+            collection_name="car_data_modelbrand",
+            field_name="car_model",
+            field_schema="keyword"
+    )
+    try:
+        # Use correct parameters for search() method
+        scroll_result = client.search(
+            collection_name="car_data_modelbrand",
+            query_vector=[0] * 384,  
+            query_filter={  
+                "must": [
+                    {"key": "car_brand", "match": {"value": request.car_brand}},
+                    {"key": "car_model", "match": {"value": request.car_model}}
+                ]
+            },
+            with_payload=True,
+            limit=1
+        )
+        
+        # Extract points from the search result
+        points = []
+        if hasattr(scroll_result, 'points'):
+            points = scroll_result.points
+        elif isinstance(scroll_result, list):
+            points = scroll_result
+            
+        if points and len(points) > 0:
+            point = points[0]
+            year_start = str(point.payload.get("year_start")) if hasattr(point, "payload") else None
+            year_end = str(point.payload.get("year_end")) if hasattr(point, "payload") else None
+            return ManufacturedYearResult(
+                year_start=year_start, 
+                year_end=year_end
+            )
+        else:
+            logger.info(f"No data found for brand '{request.car_brand}' and model '{request.car_model}'")
+            return ManufacturedYearResult()
+    except Exception as e:
+        logger.error(f"Error retrieving manufactured year range: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving manufactured year range: {str(e)}")
 
 # Search endpoint
 @app.post("/search", response_model=SearchResponse)
