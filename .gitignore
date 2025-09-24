@@ -221,3 +221,5 @@ __marimo__/
 /notebook/car_dataset.csv
 
 /notebook/model/*
+
+app/api/ocr/main_results.json
