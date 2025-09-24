@@ -1,16 +1,23 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, File, UploadFile, Form
 from contextlib import asynccontextmanager
 import asyncio
 import logging
 import threading
+import shutil
+import tempfile
+import os
+import datetime
+from uuid import uuid4
 from timeit import default_timer as timer
+from supabase import create_client, Client
 
 from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType
 from core.search import hybrid_search, load_choices
 from core.embedding import get_embedding_model
 from core.ingestion import ingest_data
 from core.db_lookup import typo_lookup, save_typo_correction
-from services.config import API_TITLE, API_DESCRIPTION, API_VERSION
+from services.config import API_TITLE, API_DESCRIPTION, API_VERSION,SUPABASE_URL, SUPABASE_ANON_KEY
+from ocr.main import VOCExtractor
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -18,10 +25,14 @@ logger = logging.getLogger(__name__)
 # Lock to prevent concurrent lazy loads
 _load_lock = threading.Lock()
 
+def get_supabase_client() -> Client:
+    return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+
 async def save_correction_async(typo: str, corrected: str, domain: str):
     """Async wrapper to save typo correction without blocking"""
     try:
-        await asyncio.to_thread(save_typo_correction, typo, corrected, domain)
+        # Direct await the coroutine - don't use asyncio.to_thread for an async function
+        await save_typo_correction(typo, corrected, domain)
     except Exception as e:
         logger.error(f"Failed to save correction: {e}")
 
@@ -94,12 +105,109 @@ def read_root():
             "/ingest"
         ]
     }
+# VOC Upload endpoint
+@app.post("/upload-voc", response_model=dict)
+async def upload_voc(
+    file: UploadFile = File(...),
+    session_id: str = Form(None),
+    background_tasks: BackgroundTasks = None
+):
+    """
+    Upload VOC image and extract car information using OCR.
+    Stores results in Supabase linked to session_id for later retrieval.
+    """
+    if not file:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+    
+    # Use provided session ID or generate a new one
+    session_id = session_id or str(uuid4())
+
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
+            temp_path = temp_file.name
+            shutil.copyfileobj(file.file, temp_file)
+         # Process the OCR extraction in background to avoid blocking
+        async def process_and_save():
+            try:
+                # Extract car info using VOCExtractor
+                extractor = VOCExtractor()
+                result = extractor.extract_from_image(temp_path)
+                
+                # Save to Supabase with session ID
+                supabase = get_supabase_client()
+                data = {
+                    "session_id": session_id,
+                    "car_brand": result.get("car_brand", ""),
+                    "car_model": result.get("car_model", ""),
+                    "manufactured_year": result.get("manufactured_year", ""),
+                    "voc_valid": bool(result.get("car_brand") or result.get("car_model")),
+                    "created_at": datetime.datetime.utcnow().isoformat()
+                }
+                
+                # Upsert to voc_session table
+                supabase.table("voc_session").upsert(
+                    data, on_conflict=["session_id"]
+                ).execute()
+                
+                logger.info(f"VOC data saved for session {session_id}: {data}")
+                
+                # Clean up temp file
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    
+            except Exception as e:
+                logger.error(f"Error processing VOC image: {e}")
+                # Clean up temp file on error
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+        
+        # Run processing in background
+        if background_tasks:
+            background_tasks.add_task(process_and_save)
+        else:
+            # For testing or immediate response
+            await process_and_save()
+        
+        return {
+            "status": "success",
+            "message": "VOC image uploaded and processing started",
+            "session_id": session_id
+        }
+        
+    except Exception as e:
+        logger.error(f"Error uploading VOC: {e}")
+        raise HTTPException(status_code=500, detail=f"Error processing upload: {str(e)}")
+
 
 # Search endpoint
 @app.post("/search", response_model=SearchResponse)
 async def search(request: SearchRequest, model=Depends(get_model)):
     try:
         domain = request.domain.value # Get string value of the enum DomainType
+        voc_result = None
+        logger.info(f"Is there request session ID? {request.session_id is not None}")
+        
+
+        if request.session_id:
+            try:
+                supabase = get_supabase_client()
+                voc_response = supabase.table("voc_session") \
+                    .select("*") \
+                    .eq("session_id", request.session_id) \
+                    .execute()
+                logger.info(f"Session ID is currently {request.session_id}")
+                if voc_response.data and len(voc_response.data) > 0:
+                    voc_data = voc_response.data[0]
+                    voc_result = {
+                        "car_brand": voc_data.get("car_brand"),
+                        "car_model": voc_data.get("car_model"),
+                        "manufactured_year": voc_data.get("manufactured_year"),
+                        "voc_valid": voc_data.get("voc_valid", False)
+                    }
+                    logger.info(f"VOC data found for session {request.session_id}")
+            except Exception as e:
+                logger.warning(f"Failed to retrieve VOC data: {e}")
+                # Continue with search even if VOC lookup fails
 
         # 1. Try DB lookup for known typo first
         found , corrected = await typo_lookup(request.query, domain)
@@ -107,7 +215,8 @@ async def search(request: SearchRequest, model=Depends(get_model)):
             return SearchResponse(
                 results=[SearchResult(text=corrected)],
                 query=request.query,
-                domain=request.domain
+                domain=request.domain,
+                voc_result=voc_result
             )
 
         # 2. If not found in DB, do hybrid search
@@ -135,7 +244,8 @@ async def search(request: SearchRequest, model=Depends(get_model)):
         return SearchResponse(
             results=[SearchResult(**r) for r in results],
             query=request.query,
-            domain=request.domain
+            domain=request.domain,  
+            voc_result=voc_result
         )
     
     except Exception as e:
@@ -144,6 +254,7 @@ async def search(request: SearchRequest, model=Depends(get_model)):
 
 @app.post("/save-correction", response_model=dict)
 async def save_correction(
+    background_tasks: BackgroundTasks,
     typo: str,
     corrected: str,
     domain: str
@@ -155,19 +266,19 @@ async def save_correction(
     try:
         if domain not in [d.value for d in DomainType]:
             raise HTTPException(status_code=400, detail="Invalid domain")
-        
-        success = await save_typo_correction(typo, corrected, domain)
+        # Create a wrapper function that can run in background tasks
+        async def bg_save_correction():
+            await save_typo_correction(typo, corrected, domain)
+            
+        background_tasks.add_task(bg_save_correction)
 
-        if success:
-            return {
+        return {
                 "status": "success",
                 "message": f"Saved correction '{typo}' -> '{corrected}' in domain '{domain}'",
                 "typo": typo,
                 "corrected": corrected,
                 "domain": domain
             }
-        else:
-            raise HTTPException(status_code=500, detail="Failed to save correction")
         
     except Exception as e:
         logger.error(f"Save correction error: {e}")
