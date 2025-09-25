@@ -22,3 +22,4 @@ streamlit
 python-dotenv
 supabase
 pillow
+google.generativeai
