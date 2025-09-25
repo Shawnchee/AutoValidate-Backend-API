@@ -11,16 +11,19 @@ from uuid import uuid4
 from timeit import default_timer as timer
 from supabase import create_client, Client
 
-from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType
+from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType, ManufacturedYearRequest, ManufacturedYearResult, UploadVOCResponse
 from core.search import hybrid_search, load_choices
-from core.embedding import get_embedding_model
+from core.embedding import load_embedding_model_hf
 from core.ingestion import ingest_data
 from core.db_lookup import typo_lookup, save_typo_correction
 from services.config import API_TITLE, API_DESCRIPTION, API_VERSION,SUPABASE_URL, SUPABASE_ANON_KEY
+from services.qdrant import get_qdrant_client
 from ocr.main import VOCExtractor
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+models = {}
 
 # Lock to prevent concurrent lazy loads
 _load_lock = threading.Lock()
@@ -36,7 +39,7 @@ async def save_correction_async(typo: str, corrected: str, domain: str):
     except Exception as e:
         logger.error(f"Failed to save correction: {e}")
 
-def ensure_model_loaded():
+async def ensure_model_loaded():
     """
     Ensure embedding model and choice lists are loaded into app.state.
     Safe to call from endpoints (will lazy-load on first access).
@@ -45,7 +48,7 @@ def ensure_model_loaded():
         with _load_lock:
             if not hasattr(app.state, "model"):
                 try:
-                    app.state.model = get_embedding_model()
+                    app.state.model = load_embedding_model_hf()
                     brand_choices, model_choices = load_choices()
                     app.state.brand_choices = brand_choices
                     app.state.model_choices = model_choices
@@ -61,10 +64,10 @@ async def lifespan(app: FastAPI):
     are loaded during process startup (not on first request).
     Uses asyncio.to_thread to avoid blocking the event loop while loading.
     """
-    logger.info("Starting up, loading embedding model and choices")
+    logger.info("Loading embedding model from HuggingFace Hub...")
     try:
         ts1 = timer()
-        app.state.model = await asyncio.to_thread(get_embedding_model)
+        app.state.model = await asyncio.to_thread(load_embedding_model_hf)
         brand_choices, model_choices = await asyncio.to_thread(load_choices)
         app.state.brand_choices = brand_choices
         app.state.model_choices = model_choices 
@@ -102,11 +105,12 @@ def read_root():
             "/detect/brand",
             "/detect/model",
             "/search",
-            "/ingest"
+            "/ingest",
+            "/upload-voc"
         ]
     }
 # VOC Upload endpoint
-@app.post("/upload-voc", response_model=dict)
+@app.post("/upload-voc", response_model=UploadVOCResponse)
 async def upload_voc(
     file: UploadFile = File(...),
     session_id: str = Form(None),
@@ -119,65 +123,143 @@ async def upload_voc(
     if not file:
         raise HTTPException(status_code=400, detail="No file uploaded")
     
-    # Use provided session ID or generate a new one
     session_id = session_id or str(uuid4())
+    extraction_result = None
 
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
             temp_path = temp_file.name
             shutil.copyfileobj(file.file, temp_file)
-         # Process the OCR extraction in background to avoid blocking
-        async def process_and_save():
-            try:
-                # Extract car info using VOCExtractor
-                extractor = VOCExtractor()
-                result = extractor.extract_from_image(temp_path)
-                
-                # Save to Supabase with session ID
-                supabase = get_supabase_client()
-                data = {
-                    "session_id": session_id,
-                    "car_brand": result.get("car_brand", ""),
-                    "car_model": result.get("car_model", ""),
-                    "manufactured_year": result.get("manufactured_year", ""),
-                    "voc_valid": bool(result.get("car_brand") or result.get("car_model")),
-                    "created_at": datetime.datetime.utcnow().isoformat()
-                }
-                
-                # Upsert to voc_session table
-                supabase.table("voc_session").upsert(
-                    data, on_conflict=["session_id"]
-                ).execute()
-                
-                logger.info(f"VOC data saved for session {session_id}: {data}")
-                
-                # Clean up temp file
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-                    
-            except Exception as e:
-                logger.error(f"Error processing VOC image: {e}")
-                # Clean up temp file on error
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
-        
-        # Run processing in background
-        if background_tasks:
-            background_tasks.add_task(process_and_save)
+
+        # Synchronous processing (returns extracted fields immediately)
+        if not background_tasks:
+            extractor = VOCExtractor(session_id=session_id)
+            logger.info(f"Extracting VOC data from image: {temp_path}")
+            result = extractor.extract_from_image(temp_path)
+            extraction_result = result
+
+            # Save to Supabase
+            supabase = get_supabase_client()
+            data = {
+                "session_id": session_id,
+                "car_brand": result.get("car_brand", ""),
+                "car_model": result.get("car_model", ""),
+                "manufactured_year": result.get("manufactured_year", ""),
+                "voc_valid": bool(result.get("car_brand") or result.get("car_model")),
+                "created_at": datetime.datetime.utcnow().isoformat(),
+            }
+            supabase.table("voc_session").upsert(data, on_conflict=["session_id"]).execute()
+            logger.info(f"VOC data saved for session {session_id}: {data}")
+
+            # cleanup temp file
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
         else:
-            # For testing or immediate response
-            await process_and_save()
-        
-        return {
+            # Background processing (no immediate extraction_result)
+            def process_and_save():
+                try:
+                    extractor = VOCExtractor(session_id=session_id)
+                    logger.info(f"Extracting VOC data from image (bg): {temp_path}")
+                    result = extractor.extract_from_image(temp_path)
+
+                    supabase = get_supabase_client()
+                    data = {
+                        "session_id": session_id,
+                        "car_brand": result.get("car_brand", ""),
+                        "car_model": result.get("car_model", ""),
+                        "manufactured_year": result.get("manufactured_year", ""),
+                        "voc_valid": bool(result.get("car_brand") or result.get("car_model")),
+                        "created_at": datetime.datetime.utcnow().isoformat(),
+                    }
+                    supabase.table("voc_session").upsert(data, on_conflict=["session_id"]).execute()
+                    logger.info(f"VOC data saved for session {session_id}: {data}")
+                except Exception as e:
+                    logger.error(f"Error processing VOC image (bg): {e}")
+                finally:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+
+            background_tasks.add_task(process_and_save)
+            logger.info(f"VOC processing queued in background for session {session_id}")
+
+        response_data = {
             "status": "success",
-            "message": "VOC image uploaded and processing started",
+            "message": "VOC image uploaded and processing started" if background_tasks else "VOC processing completed",
             "session_id": session_id
         }
-        
+
+        if extraction_result:
+            response_data.update({
+                "car_brand": extraction_result.get("car_brand", ""),
+                "car_model": extraction_result.get("car_model", ""),
+                "manufactured_year": extraction_result.get("manufactured_year", ""),
+                "voc_valid": bool(extraction_result.get("car_brand") or extraction_result.get("car_model"))
+            })
+
+        return response_data
+
     except Exception as e:
         logger.error(f"Error uploading VOC: {e}")
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.remove(temp_path)
         raise HTTPException(status_code=500, detail=f"Error processing upload: {str(e)}")
 
+@app.post("/get-manufactured-year-range", response_model=ManufacturedYearResult)
+async def get_manufactured_year_range(request: ManufacturedYearRequest):
+    """
+    Get the manufactured year range for a given car brand and model.
+    """
+    client = get_qdrant_client()
+
+            # Create payload indexes for car_brand and car_model
+    client.create_payload_index(
+            collection_name="car_data_modelbrand",
+            field_name="car_brand",
+            field_schema="keyword"  
+    )
+        
+    client.create_payload_index(
+            collection_name="car_data_modelbrand",
+            field_name="car_model",
+            field_schema="keyword"
+    )
+    try:
+        # Use correct parameters for search() method
+        scroll_result = client.search(
+            collection_name="car_data_modelbrand",
+            query_vector=[0] * 384,  
+            query_filter={  
+                "must": [
+                    {"key": "car_brand", "match": {"value": request.car_brand}},
+                    {"key": "car_model", "match": {"value": request.car_model}}
+                ]
+            },
+            with_payload=True,
+            limit=1
+        )
+        
+        # Extract points from the search result
+        points = []
+        if hasattr(scroll_result, 'points'):
+            points = scroll_result.points
+        elif isinstance(scroll_result, list):
+            points = scroll_result
+            
+        if points and len(points) > 0:
+            point = points[0]
+            year_start = str(point.payload.get("year_start")) if hasattr(point, "payload") else None
+            year_end = str(point.payload.get("year_end")) if hasattr(point, "payload") else None
+            return ManufacturedYearResult(
+                year_start=year_start, 
+                year_end=year_end
+            )
+        else:
+            logger.info(f"No data found for brand '{request.car_brand}' and model '{request.car_model}'")
+            return ManufacturedYearResult()
+    except Exception as e:
+        logger.error(f"Error retrieving manufactured year range: {e}")
+        raise HTTPException(status_code=500, detail=f"Error retrieving manufactured year range: {str(e)}")
 
 # Search endpoint
 @app.post("/search", response_model=SearchResponse)
@@ -196,14 +278,17 @@ async def search(request: SearchRequest, model=Depends(get_model)):
                     .eq("session_id", request.session_id) \
                     .execute()
                 logger.info(f"Session ID is currently {request.session_id}")
+                logger.info(f"VOC response data: {voc_response.data}")
                 if voc_response.data and len(voc_response.data) > 0:
                     voc_data = voc_response.data[0]
+                    logger.info(f"VOC Data: {voc_data}")
                     voc_result = {
                         "car_brand": voc_data.get("car_brand"),
                         "car_model": voc_data.get("car_model"),
                         "manufactured_year": voc_data.get("manufactured_year"),
                         "voc_valid": voc_data.get("voc_valid", False)
                     }
+                    logger.info(f"VOC Result: {voc_result}")
                     logger.info(f"VOC data found for session {request.session_id}")
             except Exception as e:
                 logger.warning(f"Failed to retrieve VOC data: {e}")
