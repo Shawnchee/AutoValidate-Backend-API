@@ -14,6 +14,15 @@ class SearchRequest(BaseModel):
     max_results: int = Field(default=3, ge=1, le=10, description="Maximum number of results to return")
     session_id: Optional[str] = None 
 
+class UploadVOCResponse(BaseModel):
+    status: str
+    message: str
+    session_id: str
+    car_brand: Optional[str] = None
+    car_model: Optional[str] = None
+    manufactured_year: Optional[str] = None
+    voc_valid: bool = False
+    
 class VOCResult(BaseModel):
     """VOC extraction results from OCR"""
     car_brand: Optional[str] = None
