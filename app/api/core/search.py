@@ -7,7 +7,7 @@ from rapidfuzz import process as rapidfuzz_process
 from rapidfuzz import fuzz
 from services.config import COLLECTION_NAME, DATA_PATH
 from services.qdrant import get_qdrant_client
-from core.embedding import get_embedding_model
+from core.embedding import load_embedding_model_hf
 
 logger = logging.getLogger(__name__)
 
@@ -101,7 +101,7 @@ def hybrid_search(query, choices, vector_type="brand", fuzzy_threshold=75, top_k
     Hybrid search that combines fuzzy matching and embeddings
     """
     if not model:
-        model = get_embedding_model()
+        model = load_embedding_model_hf()
 
     # Normalize query
     query_norm = normalize_text(query)
