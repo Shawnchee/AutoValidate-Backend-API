@@ -55,11 +55,12 @@ This directory contains the FastAPI backend for the AutoValidate vehicle-insuran
 
 ## Summary of Capabilities
 ```bash
-1. Frequent-typo cache lookup for instant corrections  
+1. Frequent-typo cache lookup for instant corrections (Redis Cache)
 2. Fast fuzzy matching as a first-pass filter  
-3. Semantic search based on pretrained and fine-tuned embeddings  
-4. Weekly scheduled fine-tuning of the embedding model 
-5. Optional Vehicle Ownership Certificate (VOC) OCR upload for deterministic extraction
+3. Semantic search based on pretrained and fine-tuned embeddings (Pretrained Embedding Model <-> Qdrant)
+4. Weekly scheduled fine-tuning of the embedding model
+5. Ingestion of typos into Supabase (For training purposes) and Redis Cache (For frequent typo lookup purposes)
+6. Optional Vehicle Ownership Certificate (VOC) OCR upload for deterministic extraction (Gemini 2.5 Flash)
 ```
 This implementation serves as the core validation layer for insurance applications, providing endpoints for brand/model validation, VLM OCR document processing, and typo correction.
 
@@ -102,7 +103,7 @@ This FastAPI backend implements a layered architecture:
 - **Docker**: Container-based deployment with multi-stage build optimization (For deployment purposes)
 - **Airflow**: Scheduling finetune / retrain embedding model based on frequent typos for better performance
 
-### Dependencies
+### Dependencies (MAIN Dependencies - for full list, can view requirements.txt)
 - Python 3.12+
 - PyTorch 2.1+
 - SentenceTransformers 2.2.2+
@@ -110,6 +111,8 @@ This FastAPI backend implements a layered architecture:
 - Uvicorn (ASGI server)
 - Qdrant Client 1.6.0+
 - Supabase Client 1.0.3+
+- Redis 5.0+
+- Hugging Face Hub 0.23.0+
 
 ---
 
@@ -183,6 +186,46 @@ class UploadVOCResponse(BaseModel):
     manufactured_year: Optional[str] = None
     voc_valid: Optional[bool] = False
 ```
+#### `POST /get-manufactured-year-range`
+Get the manufactured year range for a given car brand and model.
+
+**Request Body Schema**: 
+```python
+class ManufacturedYearRequest(BaseModel):
+    car_brand: str
+    car_model: str
+```
+
+**Response Schema**:
+```python
+class ManufacturedYearResult(BaseModel):
+    year_start: Optional[str] = None
+    year_end: Optional[str] = None
+```
+
+### Ingestion of typos into training dataset and frequent typo lookup cache
+
+#### `POST /save-correction`
+Save an explicitly accepted typo correction.
+Called when the user selects a correction from the UI.
+
+**Request Body Schema**: 
+```python
+  typo: str
+  corrected: str
+  domain: str ("brand" or "model")
+```
+
+**Response Schema**:
+```python
+{
+    "status": "success",
+    "message": "Saved correction '{typo}' -> '{corrected}' in domain '{domain}'",
+    "typo": str,
+    "corrected": str,
+    "domain": str
+}
+```
 
 ### Additional Endpoints
 
@@ -191,7 +234,7 @@ class UploadVOCResponse(BaseModel):
 - **POST /ingest**: Asynchronous data ingestion into vector DB
 - **GET /detect/brand/{query}**: Direct brand validation endpoint
 - **GET /detect/model/{query}**: Direct model validation endpoint
-- **POST /save-correction**: Feedback endpoint for typo corrections
+
 
 ---
 
@@ -223,7 +266,7 @@ def hybrid_search(
     query: str,
     choices: List[str],
     vector_type: str,
-    fuzzy_threshold: float = 0.8,
+    fuzzy_threshold: float = 0.75,
     top_k: int = 3,
     model: Optional[SentenceTransformer] = None
 ) -> List[Dict[str, Any]]:
