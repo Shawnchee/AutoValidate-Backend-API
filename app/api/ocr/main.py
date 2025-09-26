@@ -31,6 +31,19 @@ class VOCExtractor:
         self.session_id = new_session_id
         print(f"New session created: {new_session_id}")
         return new_session_id
+    
+    def clean_text(self, text):
+        """Clean and normalize extracted text"""
+        if not text:
+            return ""
+        
+        cleaned = re.sub(r'\s+', ' ', text.strip())
+        cleaned = re.sub(r'[^\w\s\-\.]', '', cleaned)
+        
+        # Title case: capitalize first letter, rest lowercase
+        cleaned = cleaned.strip().title() if cleaned else ""
+        
+        return cleaned
 
     def extract_text(self, image_path):
         """Extract text using Gemini Vision Language Model"""
@@ -169,13 +182,13 @@ class VOCExtractor:
                     
                     cleaned_result = {}
                     if "car_brand" in data and data["car_brand"]:
-                        cleaned_result["car_brand"] = str(data["car_brand"]).upper().strip()
+                        cleaned_result["car_brand"] = self.clean_text(data["car_brand"])        
                     
                     if "car_model" in data and data["car_model"]:
-                        full_model = str(data["car_model"]).upper().strip()
+                        full_model = str(data["car_model"]).strip()
                         # Extract only the first word/string from the model
                         first_model = full_model.split()[0] if full_model.split() else ""
-                        cleaned_result["car_model"] = first_model
+                        cleaned_result["car_model"] = first_model.title()
                     
                     if "manufactured_year" in data and data["manufactured_year"]:
                         year = str(data["manufactured_year"]).strip()
@@ -482,13 +495,14 @@ class VOCExtractor:
                     }
                     
                     if "car_brand" in data and data["car_brand"]:
-                        cleaned_result["car_brand"] = str(data["car_brand"]).upper().strip()
+                        cleaned_result["car_brand"] = str(data["car_brand"]).strip().title()
+
                     
                     if "car_model" in data and data["car_model"]:
-                        full_model = str(data["car_model"]).upper().strip()
+                        full_model = str(data["car_model"]).strip()
                         # Extract only the first word/string from the model
                         first_model = full_model.split()[0] if full_model.split() else ""
-                        cleaned_result["car_model"] = first_model
+                        cleaned_result["car_model"] = first_model.title()
                     
                     if "manufactured_year" in data and data["manufactured_year"]:
                         year = str(data["manufactured_year"]).strip()
