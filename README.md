@@ -4,6 +4,7 @@
 - [Demo Frontend](https://github.com/Seann004/AutoValidate-Frontend)
 - [SDK Repo](https://github.com/Seann004/Auto-Input-Validator-SDK)
 - [Weekly Schedule Training Airflow](https://github.com/Shawnchee/AutoValidate-Training-Airflow)
+- [Developer Documentation - Work in Progress v0](https://sss-45.gitbook.io/sss-docs/)
 
 ## 👥 Team Members  
 - 👨‍💻Shawn Chee (Final-Year @ UM)
