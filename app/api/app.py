@@ -20,6 +20,8 @@ from services.config import API_TITLE, API_DESCRIPTION, API_VERSION,SUPABASE_URL
 from services.qdrant import get_qdrant_client
 from ocr.main import VOCExtractor
 
+from fastapi.middleware.cors import CORSMiddleware
+
 # Set up logging
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,20 @@ app = FastAPI(
     description=API_DESCRIPTION,
     version=API_VERSION,
     lifespan=lifespan
+)
+
+origins_env = os.getenv("CORS_ALLOWED_ORIGINS", "")
+if origins_env:
+    origins = [o.strip() for o in origins_env.split(",") if o.strip()]
+else:
+    origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Dependency to get model
