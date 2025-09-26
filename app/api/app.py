@@ -28,6 +28,12 @@ models = {}
 # Lock to prevent concurrent lazy loads
 _load_lock = threading.Lock()
 
+def normalize_case(text):
+    """Normalize text to title case (first letter uppercase, rest lowercase)"""
+    if not text:
+        return ""
+    return text.strip().title()
+
 def get_supabase_client() -> Client:
     return create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -142,8 +148,8 @@ async def upload_voc(
             supabase = get_supabase_client()
             data = {
                 "session_id": session_id,
-                "car_brand": result.get("car_brand", ""),
-                "car_model": result.get("car_model", ""),
+                "car_brand": normalize_case(result.get("car_brand", "")),
+                "car_model": normalize_case(result.get("car_model", "")),
                 "manufactured_year": result.get("manufactured_year", ""),
                 "voc_valid": bool(result.get("car_brand") or result.get("car_model")),
                 "created_at": datetime.datetime.utcnow().isoformat(),
@@ -166,8 +172,8 @@ async def upload_voc(
                     supabase = get_supabase_client()
                     data = {
                         "session_id": session_id,
-                        "car_brand": result.get("car_brand", ""),
-                        "car_model": result.get("car_model", ""),
+                        "car_brand": normalize_case(result.get("car_brand", "")),
+                        "car_model": normalize_case(result.get("car_model", "")),
                         "manufactured_year": result.get("manufactured_year", ""),
                         "voc_valid": bool(result.get("car_brand") or result.get("car_model")),
                         "created_at": datetime.datetime.utcnow().isoformat(),
@@ -191,8 +197,8 @@ async def upload_voc(
 
         if extraction_result:
             response_data.update({
-                "car_brand": extraction_result.get("car_brand", ""),
-                "car_model": extraction_result.get("car_model", ""),
+                "car_brand": normalize_case(extraction_result.get("car_brand", "")),
+                "car_model": normalize_case(extraction_result.get("car_model", "")),
                 "manufactured_year": extraction_result.get("manufactured_year", ""),
                 "voc_valid": bool(extraction_result.get("car_brand") or extraction_result.get("car_model"))
             })
