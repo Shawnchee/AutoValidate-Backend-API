@@ -4,8 +4,8 @@ import datetime
 import logging
 from timeit import default_timer as timer
 
-from services.config import SUPABASE_ANON_KEY, SUPABASE_URL
-from services.redis import redis
+from api.services.config import SUPABASE_ANON_KEY, SUPABASE_URL
+from api.services.redis import redis
 
 logging = logging.getLogger(__name__)
 

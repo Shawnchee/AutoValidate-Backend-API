@@ -1,9 +1,9 @@
 import pandas as pd
 import logging
 from qdrant_client.models import PointStruct
-from services.config import COLLECTION_NAME, DATA_PATH
-from services.qdrant import get_qdrant_client, create_collection
-from core.embedding import load_embedding_model_hf
+from api.services.config import COLLECTION_NAME, DATA_PATH
+from api.services.qdrant import get_qdrant_client, create_collection
+from api.core.embedding import load_embedding_model_hf
 
 logger = logging.getLogger(__name__)
 
