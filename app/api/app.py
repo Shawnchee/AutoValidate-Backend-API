@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, File, UploadFile, Form
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, File, UploadFile, Form, Header
 from contextlib import asynccontextmanager
 import asyncio
 import logging
@@ -25,10 +25,21 @@ from fastapi.middleware.cors import CORSMiddleware
 # Set up logging
 logger = logging.getLogger(__name__)
 
+SSS_API_KEY = os.getenv("SSS_API_KEY")
+
 models = {}
 
 # Lock to prevent concurrent lazy loads
 _load_lock = threading.Lock()
+
+async def validate_api_key(x_api_key: str = Header(None)):
+    """Validate API key from X-API-Key header"""
+    if not x_api_key or x_api_key != SSS_API_KEY:
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid or missing API key. Please find API KEY in frontend demo website"
+        )
+    return x_api_key
 
 def normalize_case(text):
     """Normalize text to title case (first letter uppercase, rest lowercase)"""
@@ -125,14 +136,17 @@ def read_root():
             "/search",
             "/ingest",
             "/upload-voc"
-        ]
+        ],
+        "auth": "Requires X-API-Key header"
+
     }
 # VOC Upload endpoint
 @app.post("/upload-voc", response_model=UploadVOCResponse)
 async def upload_voc(
     file: UploadFile = File(...),
     session_id: str = Form(None),
-    background_tasks: BackgroundTasks = None
+    background_tasks: BackgroundTasks = None,
+    api_key: str = Depends(validate_api_key)
 ):
     """
     Upload VOC image and extract car information using OCR.
@@ -224,7 +238,7 @@ async def upload_voc(
         raise HTTPException(status_code=500, detail=f"Error processing upload: {str(e)}")
 
 @app.post("/get-manufactured-year-range", response_model=ManufacturedYearResult)
-async def get_manufactured_year_range(request: ManufacturedYearRequest):
+async def get_manufactured_year_range(request: ManufacturedYearRequest, api_key: str = Depends(validate_api_key)):
     """
     Get the manufactured year range for a given car brand and model.
     """
@@ -281,7 +295,7 @@ async def get_manufactured_year_range(request: ManufacturedYearRequest):
 
 # Search endpoint
 @app.post("/search", response_model=SearchResponse)
-async def search(request: SearchRequest, model=Depends(get_model)):
+async def search(request: SearchRequest, model=Depends(get_model), api_key: str = Depends(validate_api_key)):
     try:
         domain = request.domain.value # Get string value of the enum DomainType
         voc_result = None
@@ -360,7 +374,8 @@ async def save_correction(
     background_tasks: BackgroundTasks,
     typo: str,
     corrected: str,
-    domain: str
+    domain: str,
+    api_key: str = Depends(validate_api_key)
 ):
     """
     Save an explicitly accepted typo correction
@@ -392,7 +407,8 @@ async def save_correction(
 @app.get("/detect/brand/{query}", response_model=SearchResponse)
 async def detect_brand_typo(
     query: str, 
-    model=Depends(get_model)
+    model=Depends(get_model),
+    api_key: str = Depends(validate_api_key)
 ):
     """
     Detect and correct brand typos
@@ -408,7 +424,8 @@ async def detect_brand_typo(
 @app.get("/detect/model/{query}", response_model=SearchResponse)
 async def detect_model_typo(
     query: str, 
-    model=Depends(get_model)
+    model=Depends(get_model),
+    api_key: str = Depends(validate_api_key)
 ):
     """
     Detect and correct model typos
@@ -424,7 +441,7 @@ async def detect_model_typo(
 
 # Data ingestion endpoint
 @app.post("/ingest", response_model=IngestResponse)
-async def ingest_data_endpoint(request: IngestRequest, background_tasks: BackgroundTasks):
+async def ingest_data_endpoint(request: IngestRequest, background_tasks: BackgroundTasks, api_key: str = Depends(validate_api_key)):
     try:
         # Run ingestion in background
         def run_ingestion():
