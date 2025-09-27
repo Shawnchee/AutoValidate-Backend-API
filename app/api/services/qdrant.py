@@ -1,7 +1,7 @@
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, VectorParams, PayloadSchemaType
-from services.config import QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME
+from api.services.config import QDRANT_URL, QDRANT_API_KEY, COLLECTION_NAME
 import logging
 
 logger = logging.getLogger(__name__)

@@ -11,14 +11,14 @@ from uuid import uuid4
 from timeit import default_timer as timer
 from supabase import create_client, Client
 
-from services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType, ManufacturedYearRequest, ManufacturedYearResult, UploadVOCResponse
-from core.search import hybrid_search, load_choices
-from core.embedding import load_embedding_model_hf
-from core.ingestion import ingest_data
-from core.db_lookup import typo_lookup, save_typo_correction
-from services.config import API_TITLE, API_DESCRIPTION, API_VERSION,SUPABASE_URL, SUPABASE_ANON_KEY
-from services.qdrant import get_qdrant_client
-from ocr.main import VOCExtractor
+from api.services.models import SearchRequest, SearchResponse, SearchResult, IngestRequest, IngestResponse, DomainType, ManufacturedYearRequest, ManufacturedYearResult, UploadVOCResponse
+from api.core.search import hybrid_search, load_choices
+from api.core.embedding import load_embedding_model_hf
+from api.core.ingestion import ingest_data
+from api.core.db_lookup import typo_lookup, save_typo_correction
+from api.services.config import API_TITLE, API_DESCRIPTION, API_VERSION,SUPABASE_URL, SUPABASE_ANON_KEY
+from api.services.qdrant import get_qdrant_client
+from api.ocr.main import VOCExtractor
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -86,7 +86,17 @@ async def lifespan(app: FastAPI):
     logger.info("Loading embedding model from HuggingFace Hub...")
     try:
         ts1 = timer()
-        app.state.model = await asyncio.to_thread(load_embedding_model_hf)
+        # Load model with retry mechanism
+        for attempt in range(3):
+            try:
+                app.state.model = await asyncio.to_thread(load_embedding_model_hf)
+                if app.state.model is not None:
+                    break
+            except Exception as e:
+                logger.warning(f"Model load attempt {attempt + 1} failed: {e}")
+                if attempt == 2:  # Last attempt
+                    raise e
+                await asyncio.sleep(2)  # Wait before retry
         brand_choices, model_choices = await asyncio.to_thread(load_choices)
         app.state.brand_choices = brand_choices
         app.state.model_choices = model_choices 
