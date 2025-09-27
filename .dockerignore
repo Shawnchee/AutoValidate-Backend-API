@@ -8,3 +8,36 @@ data/
 models/
 .vscode
 node_modules
+
+# Large ML/data folders (ADD THESE)
+models/
+latest_model/
+checkpoints/
+data/
+notebooks/
+notebook/
+*.ipynb
+.ipynb_checkpoints
+
+# Python virtual environments
+venv/
+.venv/
+env/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large archives/dumps
+*.zip
+*.tar.gz
+*.pkl
+*.h5
+*.pt
+*.pth
+*.safetensors
