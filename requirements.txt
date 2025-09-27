@@ -14,7 +14,7 @@ rapidfuzz
 transformers==4.56.2
 redis
 opencv-python
-numpy
+numpy<2
 python-dotenv
 supabase
 pillow
