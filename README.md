@@ -1,5 +1,9 @@
 # 🚗 Developer-First Smart Vehicle Data Validation SDK & API (AutoValidate)
 
+## Deployed Links
+- [AutoValidate API & SDK Demo Frontend](https://autovalidate-api-demo.vercel.app/)
+- [AutoValidate API](https://codenection-sss-cm94k.ondigitalocean.app/docs)
+
 ## Other Related Repository Links
 - [AutoValidate Frontend Application DEMO](https://github.com/Seann004/AutoValidate-Frontend)
 - [AutoValidate SDK (Input Validator)](https://github.com/Seann004/Auto-Input-Validator-SDK)
