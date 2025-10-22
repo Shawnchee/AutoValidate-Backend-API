@@ -2,7 +2,7 @@
 
 ## Deployed Links
 - [AutoValidate API & SDK Demo Frontend](https://autovalidate-api-demo.vercel.app/)
-- [AutoValidate API](https://codenection-sss-cm94k.ondigitalocean.app/docs)
+- [AutoValidate API Docs](https://codenection-sss-cm94k.ondigitalocean.app/docs)
 
 ## Other Related Repository Links
 - [AutoValidate Frontend Application DEMO](https://github.com/Seann004/AutoValidate-Frontend)
